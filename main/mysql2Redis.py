@@ -5,7 +5,6 @@ Created on 2016年10月1日
 @author: MQ
 '''
 import sys
-from time import sleep
 sys.path.append('../')
 
 from util.snailLog  import snailLogger
@@ -35,14 +34,16 @@ class mysql2Redis():
               "pass" : self.__proxyPass,
             }
         #选择使用代理
-        self.__enable_proxy = False
+        self.__enable_proxy = True
         self.__url = 'http://m.weibo.cn/page/json?containerid=100505%s_-_FOLLOWERS&page=%s'
         self.__db = dbManager2(dbname='sina')
-        self.__redisDb = redis.Redis(host='223.3.94.211',port= 6379,db=0,password='redis123')
+        self.__redisDb = redis.Redis(host='223.3.94.145',port= 6379,db=0,password='redis123')
 
     def get_uidLs_from_mysql(self):
         try:
-            uidLs = self.__db.executeSelect('select uid from scra_flags_0 where frelation_flag = 0 order by id asc limit 0,1')
+            sql = 'select uid from scra_flags_0 where frelation_flag = 0 order by id asc limit 0,1'
+#             sql_bak = 'select uid from scra_flags_0 where uid = 5579940613'#frelation_flag = 1 and id >11984 and id <19333 '#1020增补最后一页
+            uidLs = self.__db.executeSelect(sql)
         except Exception as e:
             logger.error('Exception in function::: get_uidLs_from_mysql -------------------->%s'%str(e))
         else:
@@ -64,45 +65,66 @@ class mysql2Redis():
             response = openner.open(request)#,timeout=5
         except urllib2.HTTPError as e:
             logger.error('Exception in function::: get_max_page(error code) uid=%s-------------------->%s'%(uid,str(e.code)))
+            maxPage = -2
+            time.sleep(2)
         except urllib2.URLError as e:
+            maxPage = -2
             logger.error('Exception in function::: get_max_page(url error) uid=%s-------------------->%s'%(uid,str(e)))
         else:
-            logger.info(maxPageUrl)
             try:
                 decodejson = json.loads(response.read())#之前不能有print函数
             except Exception as e:
                 logger.error('Exception in function::: get_max_page(json data error) uid=%s------------------->%s'%(uid,str(e)))
-                time.sleep(5)
+                maxPage = -2
+#                 time.sleep(5)
             else:
             #获得uid的url最大页码
                 if decodejson.has_key('ok'):
                     if decodejson.has_key('count'):#如果没有最大页，取count除以10作为最大页面
-                        if decodejson['count'] == None:
+                        if decodejson['count'] == None or decodejson['count'] == 0:
     #                         maxPage = 0 只记录日志，不返回，默认返回默认maxPage=-1
-                            logger.warn('user %s----------------------------> has 0 followers!!'%uid)
+                            logger.warn('user %s----------------------------> has 0 followers or can not get content!!'%uid)
                         else:
                             if decodejson['cards'][0].has_key('maxPage'):
                                 maxPage = decodejson['cards'][0]['maxPage']
                             else:
-                                maxPage = decodejson['count']/10+1
-
+                                maxPage = (decodejson['count']-1)/10+1#decodejson['count']大于0
+                                logger.warn('user %s----------------------------> has no maxPage!!! count:::%s,count/10 +1 instead :::%s'%(uid,decodejson['count'],maxPage))
+                logger.info('function::::get_max_page-------------uid::::%s:::maxPage:::::%s'%(uid,maxPage))#日志文件完善20161020
         return maxPage
 
     def fill_url_to_redis(self):
         try:
             #从mysql获得uidLs
             uidLs = self.get_uidLs_from_mysql()
-            for uid in uidLs:
-                maxPage = self.get_max_page(uid)
-                for i in range(maxPage):
-                    # print self.__url%(uid,i)
-                    self.__redisDb.rpush('frelation:start_urls', self.__url%(uid,i))
+            countLT0 =[]
+            if uidLs != None:#数据库运行正常
+                updateUserLs = uidLs
+                
+                for uid in updateUserLs:
+                    maxPage = self.get_max_page(uid)
+                    if maxPage > 0:
+#                         print self.__url%(uid,maxPage)#1020增补最后一页
+#                         self.__redisDb.rpush('frelation:start_urls', self.__url%(uid,maxPage))#1020增补最后一页
+                        for i in range(1,maxPage+1):#range的最大页数从1到maxPage
+                            self.__redisDb.rpush('frelation:start_urls', self.__url%(uid,i))
+                    elif maxPage == -2:
+                        logger.error('uid::::::%s do nothing because maxPage < 0 (maxPage=-2)'%uid)
+                    else:#如果没有取得最大页码，则从uidLs中删除此uid
+                        uidLs.remove(uid)
+                        countLT0.append(str(uid))
+                        logger.warn('uid::::::%s is added in countLT0 because maxPage < 0 (maxPage=-1)'%uid)
+                    
         except Exception as e:
-            logger.error('Exception in function::: fill_url_to_redis -------------------->%s'%str(e))
-#         else:
-#             #更新mysql数据库的flag
-#             update_sql = 'update scra_flags_0 set frelation_flag = 1 where uid = %s'
-#             self.__db.executemany(update_sql,uidLs)
+            logger.error('Exception in function::: fill_url_to_redis uidLs:::%s-------------------->%s'%(','.join(uidLs),str(e)))
+        else:
+            if len(uidLs)>0:
+                #更新mysql数据库的flag
+                update_sql = 'update scra_flags_0 set frelation_flag = 1 where uid = %s'
+                self.__db.executemany(update_sql,uidLs)
+            if len(countLT0) > 0:
+                update_sql = 'update scra_flags_0 set frelation_flag = 2 where uid = %s'
+                self.__db.executemany(update_sql,countLT0)
 
     #获得当前redis数据库中相应的队列中url数量
     def get_redis_url_count(self,name):
@@ -114,9 +136,11 @@ class mysql2Redis():
             self.__redisDb.rpush('myspider:start_urls','http://%s'%i)
 
 if __name__ == '__main__':
-    print '------running------'
-#     sleep(60)
+#     print '------running------'
     a = mysql2Redis()
-    a.fill_url_to_redis()
-    print '--------end-----------'
+    while 1:
+        a.fill_url_to_redis()
+        time.sleep(8)
+        
+#     print '--------end-----------'
 

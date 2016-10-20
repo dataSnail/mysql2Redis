@@ -5,8 +5,8 @@ Created on 2016年10月3日
 @author: MQ
 '''
 import MySQLdb
-from util.snailLog  import snailLogger
-logger = snailLogger('dbManager2.log').get_logger()
+# from util.snailLog  import snailLogger
+# # logger = snailLogger('dbManager2.log').get_logger()
 
 class dbManager2():
     def __init__(self,dbname,host='223.3.75.180',user='root',passwd='root@123',port=3306,charset='utf8'):
