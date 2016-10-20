@@ -1,4 +1,4 @@
-# -*- coding:utf-8 -*-  
+# -*- coding:utf-8 -*-
 '''
 Created on 2016年10月3日
 
@@ -6,10 +6,10 @@ Created on 2016年10月3日
 '''
 import MySQLdb
 from util.snailLog  import snailLogger
-logger = snailLogger('F:\\pytest\\dbManager2.log').get_logger()
+logger = snailLogger('dbManager2.log').get_logger()
 
 class dbManager2():
-    def __init__(self,dbname,host='223.3.94.145',user='root',passwd='root@123',port=3306,charset='utf8'):
+    def __init__(self,dbname,host='223.3.75.180',user='root',passwd='root@123',port=3306,charset='utf8'):
         self.__host = host
         self.__user = user
         self.__passwd = passwd
@@ -20,25 +20,25 @@ class dbManager2():
         self.__conn.select_db(dbname)
         self.__cur = self.__conn.cursor()
 #         except Exception as e:
-#             logger.error('dbManager2 Exception in function ::: __init__ e :%s \n'%str(e.reason))    
-    
+#             logger.error('dbManager2 Exception in function ::: __init__ e :%s \n'%str(e.reason))
+
     def executeSelect(self,sql):
-        self.__cur.executeSelect(sql)
+        self.__cur.execute(sql)
         resultLs = self.__cur.fetchall()
 #         except Exception as e:
 #             logger.error('dbManager2 Exception in function ::: execute e :%s \n'%str(e.reason))
 #         else:
         return resultLs
-        
+
     def execute(self,sql):
         self.__cur.execute(sql)
-        self.__conn.commit()               
-    
+        self.__conn.commit()
+
     def executemany(self,sql,values):
         self.__cur.executemany(sql,values)
         self.__conn.commit()
-    
-    
+
+
     def release(self):
         if self.__cur != None:
             self.__cur.close()
