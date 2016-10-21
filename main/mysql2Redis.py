@@ -66,7 +66,8 @@ class mysql2Redis():
         except urllib2.HTTPError as e:
             logger.error('Exception in function::: get_max_page(error code) uid=%s-------------------->%s'%(uid,str(e.code)))
             maxPage = -2
-            time.sleep(2)
+            if e.code == 429:#请求过于频繁
+                time.sleep(2)
         except urllib2.URLError as e:
             maxPage = -2
             logger.error('Exception in function::: get_max_page(url error) uid=%s-------------------->%s'%(uid,str(e)))
@@ -108,7 +109,7 @@ class mysql2Redis():
 #                         self.__redisDb.rpush('frelation:start_urls', self.__url%(uid,maxPage))#1020增补最后一页
                         for i in range(1,maxPage+1):#range的最大页数从1到maxPage
                             self.__redisDb.rpush('frelation:start_urls', self.__url%(uid,i))
-                    elif maxPage == -2:#处理页码出现异常，则从uidLs中删除此uid，此种用户不更新任何信息
+                    elif maxPage == -2:#处理页码出现异常，则从uidLs中删除此uid，此种用户不更新爬取标记
                         uidLs.remove(uid)
                         logger.error('uid::::::%s do nothing because maxPage < 0 (maxPage=-2)'%uid)
                     else:#没有取得最大页码，则从uidLs中删除此uid
@@ -120,10 +121,11 @@ class mysql2Redis():
             logger.error('Exception in function::: fill_url_to_redis uidLs:::%s-------------------->%s'%(','.join(uidLs),str(e)))
         else:
             if len(uidLs)>0:
-                #更新mysql数据库的flag
+                #正常用户，更新mysql数据库的flag
                 update_sql = 'update scra_flags_0 set frelation_flag = 1 where uid = %s'
                 self.__db.executemany(update_sql,uidLs)
             if len(countLT0) > 0:
+                #异常用户更新标记为2
                 update_sql = 'update scra_flags_0 set frelation_flag = 2 where uid = %s'
                 self.__db.executemany(update_sql,countLT0)
 
