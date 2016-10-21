@@ -97,7 +97,7 @@ class mysql2Redis():
         try:
             #从mysql获得uidLs
             uidLs = self.get_uidLs_from_mysql()
-            countLT0 =[]
+            countLT0 =[]#防止真的没有关注者的用户干扰程序，保存有关注者但是取不到的用户和确实没有关注者的用户列表，更新标记2
             if uidLs != None:#数据库运行正常
                 updateUserLs = uidLs
                 
@@ -108,9 +108,10 @@ class mysql2Redis():
 #                         self.__redisDb.rpush('frelation:start_urls', self.__url%(uid,maxPage))#1020增补最后一页
                         for i in range(1,maxPage+1):#range的最大页数从1到maxPage
                             self.__redisDb.rpush('frelation:start_urls', self.__url%(uid,i))
-                    elif maxPage == -2:
+                    elif maxPage == -2:#处理页码出现异常，则从uidLs中删除此uid，此种用户不更新任何信息
+                        uidLs.remove(uid)
                         logger.error('uid::::::%s do nothing because maxPage < 0 (maxPage=-2)'%uid)
-                    else:#如果没有取得最大页码，则从uidLs中删除此uid
+                    else:#没有取得最大页码，则从uidLs中删除此uid
                         uidLs.remove(uid)
                         countLT0.append(str(uid))
                         logger.warn('uid::::::%s is added in countLT0 because maxPage < 0 (maxPage=-1)'%uid)
