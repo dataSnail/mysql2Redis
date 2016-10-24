@@ -38,10 +38,10 @@ class M2RWblog(object):
         # mysql连接
         self.__db = dbManager2(dbname='sina')
         # redis连接
-        # self.__redisDb = redis.Redis(
-        #     host='223.3.94.145', port=6379, db=0, password='redis123')
         self.__redisDb = redis.Redis(
-            host='127.0.0.1', port=6379, db=0)
+            host='223.3.94.145', port=6379, db=0, password='redis123')
+        # self.__redisDb = redis.Redis(
+        #     host='127.0.0.1', port=6379, db=0)
         # redis中url队列的名称
         self.__redisUrlName = 'wblog:start_urls'
         # 从哪个表中读取数据
@@ -111,11 +111,11 @@ class M2RWblog(object):
                 pass
             # 如果maxPage还是-1的话，那么就说明此用户没有微博
             elif maxPage == -1:
-                self.__db.executeSelect(
+                self.__db.execute(
                     'UPDATE %s SET wblog_flag = 2 WHERE uid = %s' % (self.__table, uid))
             else:
-                self.__db.executeSelect(
-                    'UPDATE %s SET wblog_flag = 1 WHERE uid = %s' % (self.__table, uid))    
+                self.__db.execute(
+                    'UPDATE %s SET wblog_flag = 1 WHERE uid = %s' % (self.__table, uid))
             # 将page=1~page=maxPage的url插入urls
             for i in range(maxPage):
                 urls.append(self.__url % (uid, str(i + 1)))

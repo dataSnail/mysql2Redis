@@ -38,10 +38,10 @@ class M2RComment(object):
         # mysql连接
         self.__db = dbManager2(dbname='sina')
         # redis连接
-        # self.__redisDb = redis.Redis(
-        #     host='223.3.94.211', port=6379, db=0, password='redis123')
         self.__redisDb = redis.Redis(
-            host='127.0.0.1', port=6379, db=0)
+            host='223.3.94.211', port=6379, db=0, password='redis123')
+        # self.__redisDb = redis.Redis(
+        #     host='127.0.0.1', port=6379, db=0)
         # redis中url队列的名称
         self.__redisUrlName = 'comment:start_urls'
         # 从哪个表中读取数据
@@ -107,10 +107,10 @@ class M2RComment(object):
                 pass
             # 如果maxPage还是-1的话，那么就说明此微博没有评论
             elif maxPage == -1:
-                self.__db.executeSelect(
+                self.__db.execute(
                     'UPDATE %s SET comment_flag = 2 WHERE mid = %s' % (self.__table, mid))
             else:
-                self.__db.executeSelect(
+                self.__db.execute(
                     'UPDATE %s SET comment_flag = 1 WHERE mid = %s' % (self.__table, mid))
             # print maxPage
             # 将page=1~page=maxPage的url插入urls
