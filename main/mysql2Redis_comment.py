@@ -34,7 +34,7 @@ class M2RComment(object):
         # 选择使用代理
         self.__enable_proxy = False
         # 微博评论第一页
-        self.__url = 'http://m.weibo.cn/single/rcList?format=cards&id=%s&type=comment&hot=0&page=%s'
+        self.__url = 'http://m.weibo.cn/single/rcList?format=cards&id=%s&type=comment&page=%s'
         # mysql连接
         self.__db = dbManager2(dbname='sina')
         # redis连接
