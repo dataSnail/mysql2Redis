@@ -9,6 +9,7 @@ sys.path.append('../')
 from util.snailLog  import snailLogger
 from util.dbManager2 import dbManager2
 from util.header import HEADER
+from util.cookie import COOKIE
 import urllib2
 import json
 import time
@@ -66,7 +67,7 @@ class M2RComment(object):
             maxPage = -1  # 最大页数初始化
             maxPageUrl = self.__url % (mid, 1)  # 第一页
             # 构建request 方便加入内容
-            request = urllib2.Request(maxPageUrl, headers=HEADER)
+            request = urllib2.Request(maxPageUrl, headers=HEADER, cookie=COOKIE)
             try:
                 proxy_handler = urllib2.ProxyHandler(
                     {"http": self.__proxyMeta, 'https': self.__proxyMeta})
