@@ -133,6 +133,7 @@ class M2RComment(object):
 
 if __name__ == '__main__':
     m2r = M2RComment()
-    while m2r.get_redis_url_count() < 1000:
-        m2r.push_url_to_redis()
+    while True:
+        if m2r.get_redis_url_count() < 1000:
+            m2r.push_url_to_redis()
         time.sleep(8)
