@@ -49,6 +49,8 @@ class M2RComment(object):
         self.__redisUrlName = 'comment:start_urls'
         # 从哪个表中读取数据
         self.__table = 'wblog_1'
+        # 记录404的次数，当达到10次时，就重新获取cookie
+        self.cnt = 0
 
     # 从mysql获取mid列表
     def get_mids_from_mysql(self):
@@ -84,6 +86,11 @@ class M2RComment(object):
             except urllib2.HTTPError as e:
                 logger.error(
                     'Exception in function::: get_urls_based_on_midLs(error code) mid=%s-------------------->%s' % (mid, str(e.code)))
+                if str(e.code) == '404':
+                    self.cnt += 1
+                if self.cnt == 10:
+                    self.cnt == 0
+                    execfile(os.path.abspath(os.pardir) + '/util/login.py')
                 maxPage = -2
             except urllib2.URLError as e:
                 logger.error(
@@ -140,6 +147,5 @@ if __name__ == '__main__':
     m2r = M2RComment()
     while True:
         if m2r.get_redis_url_count() < 1000:
-            execfile(os.path.abspath(os.pardir) + '\util\login.py')
             m2r.push_url_to_redis()
         time.sleep(8)
