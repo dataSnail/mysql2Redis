@@ -3,13 +3,15 @@
 Created on 2016年10月21日
 从mysql中读出mid，生成该微博所有评论的url，并放入redis队列中
 '''
+import cookielib
+import os
 import sys
 sys.path.append('../')
 
 from util.snailLog  import snailLogger
 from util.dbManager2 import dbManager2
 from util.header import HEADER
-from util.cookie import COOKIE
+
 import urllib2
 import json
 import time
@@ -40,7 +42,7 @@ class M2RComment(object):
         self.__db = dbManager2(dbname='sina')
         # redis连接
         self.__redisDb = redis.Redis(
-            host='223.3.94.211', port=6379, db=0, password='redis123')
+            host='223.3.94.145', port=6379, db=0, password='redis123')
         # self.__redisDb = redis.Redis(
         #     host='127.0.0.1', port=6379, db=0)
         # redis中url队列的名称
@@ -62,20 +64,22 @@ class M2RComment(object):
     # 根据从mysql过去的mid列表生成每条微博所有评论的url，这需要访问第一页来确认最大页数
     def get_urls_based_on_midLs(self):
         urls = []
+        cookie = cookielib.MozillaCookieJar()
+        cookie.load(os.path.abspath(os.pardir) + '\cookie.txt', ignore_discard=True, ignore_expires=True)
         # 遍历每条微博，访问第一页
         for mid in self.get_mids_from_mysql():
             maxPage = -1  # 最大页数初始化
             maxPageUrl = self.__url % (mid, 1)  # 第一页
             # 构建request 方便加入内容
-            request = urllib2.Request(maxPageUrl, headers=HEADER, cookie=COOKIE)
+            request = urllib2.Request(maxPageUrl, headers=HEADER)
             try:
                 proxy_handler = urllib2.ProxyHandler(
                     {"http": self.__proxyMeta, 'https': self.__proxyMeta})
                 null_proxy_handler = urllib2.ProxyHandler({})
                 if self.__enable_proxy:
-                    openner = urllib2.build_opener(proxy_handler)
+                    openner = urllib2.build_opener(proxy_handler, urllib2.HTTPCookieProcessor(cookie))
                 else:
-                    openner = urllib2.build_opener(null_proxy_handler)
+                    openner = urllib2.build_opener(null_proxy_handler, urllib2.HTTPCookieProcessor(cookie))
                 response = openner.open(request)  # ,timeout=5
             except urllib2.HTTPError as e:
                 logger.error(
@@ -136,5 +140,6 @@ if __name__ == '__main__':
     m2r = M2RComment()
     while True:
         if m2r.get_redis_url_count() < 1000:
+            execfile(os.path.abspath(os.pardir) + '\util\login.py')
             m2r.push_url_to_redis()
         time.sleep(8)

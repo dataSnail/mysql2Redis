@@ -528,3 +528,9 @@ HEADER = {
 #         'Accept-Encoding': 'gzip, deflate, sdch',
         'Host':'m.weibo.cn'
           }
+headers = {
+            "Host": "m.weibo.cn",
+            "Connection": "keep-alive",
+            "Upgrade-Insecure-Requests": "1",
+            'User-Agent': random.choice(AGENTS)
+        }
