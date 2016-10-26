@@ -89,7 +89,7 @@ class M2RComment(object):
                 if str(e.code) == '404':
                     self.cnt += 1
                 if self.cnt == 10:
-                    self.cnt == 0
+                    self.cnt = 0
                     execfile(os.path.abspath(os.pardir) + '/util/login.py')
                     cookie = cookielib.MozillaCookieJar()
                     cookie.load(os.path.abspath(os.pardir) + '\cookie.txt', ignore_discard=True, ignore_expires=True)
