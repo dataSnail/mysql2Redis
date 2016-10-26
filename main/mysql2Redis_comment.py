@@ -91,6 +91,8 @@ class M2RComment(object):
                 if self.cnt == 10:
                     self.cnt == 0
                     execfile(os.path.abspath(os.pardir) + '/util/login.py')
+                    cookie = cookielib.MozillaCookieJar()
+                    cookie.load(os.path.abspath(os.pardir) + '\cookie.txt', ignore_discard=True, ignore_expires=True)
                 maxPage = -2
             except urllib2.URLError as e:
                 logger.error(
