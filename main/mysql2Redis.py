@@ -6,6 +6,7 @@ Created on 2016年10月1日
 '''
 import sys
 sys.path.append('../')
+from util import r2mConfig
 
 from util.snailLog  import snailLogger
 from util.dbManager2 import dbManager2
@@ -36,8 +37,13 @@ class mysql2Redis():
         #选择使用代理
         self.__enable_proxy = True
         self.__url = 'http://m.weibo.cn/page/json?containerid=100505%s_-_FOLLOWERS&page=%s'
-        self.__db = dbManager2(dbname='sina')
-        self.__redisDb = redis.Redis(host='223.3.94.145',port= 6379,db=0,password='redis123')
+        #数据库连接不上，停止运行程序30min = 1800s
+        try:
+            self.__db = dbManager2(dbname='sina')
+            self.__redisDb = redis.Redis(host=r2mConfig.REDIS_SERVER_IP,port= 6379,db=0,password=r2mConfig.REDIS_PASSWD)
+        except Exception as e:
+            logger.error('Exception in __init__ e:::::%s  and sleep at :::%s-----1800s'%(str(e),time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))))
+            time.sleep(1800)
 
     def get_uidLs_from_mysql(self):
         try:
@@ -95,39 +101,41 @@ class mysql2Redis():
         return maxPage
 
     def fill_url_to_redis(self):
-        try:
-            #从mysql获得uidLs
-            uidLs = self.get_uidLs_from_mysql()
-            countLT0 =[]#防止真的没有关注者的用户干扰程序，保存有关注者但是取不到的用户和确实没有关注者的用户列表，更新标记2
-            if uidLs != None:#数据库运行正常
-                updateUserLs = uidLs
-                
-                for uid in updateUserLs:
-                    maxPage = self.get_max_page(uid)
-                    if maxPage > 0:
-#                         print self.__url%(uid,maxPage)#1020增补最后一页
-#                         self.__redisDb.rpush('frelation:start_urls', self.__url%(uid,maxPage))#1020增补最后一页
-                        for i in range(1,maxPage+1):#range的最大页数从1到maxPage
-                            self.__redisDb.rpush('frelation:start_urls', self.__url%(uid,i))
-                    elif maxPage == -2:#处理页码出现异常，则从uidLs中删除此uid，此种用户不更新爬取标记
-                        uidLs.remove(uid)
-                        logger.error('uid::::::%s do nothing because maxPage < 0 (maxPage=-2)'%uid)
-                    else:#没有取得最大页码，则从uidLs中删除此uid
-                        uidLs.remove(uid)
-                        countLT0.append(str(uid))
-                        logger.warn('uid::::::%s is added in countLT0 because maxPage < 0 (maxPage=-1)'%uid)
+        if self.get_redis_url_count('frelation:start_urls')<8000:
+            try:
+                #从mysql获得uidLs
+                uidLs = self.get_uidLs_from_mysql()
+                countLT0 =[]#防止真的没有关注者的用户干扰程序，保存有关注者但是取不到的用户和确实没有关注者的用户列表，更新标记2
+                if uidLs != None:#数据库运行正常
+                    updateUserLs = uidLs
                     
-        except Exception as e:
-            logger.error('Exception in function::: fill_url_to_redis uidLs:::%s-------------------->%s'%(','.join(uidLs),str(e)))
-        else:
-            if len(uidLs)>0:
-                #正常用户，更新mysql数据库的flag
-                update_sql = 'update scra_flags_0 set frelation_flag = 1 where uid = %s'
-                self.__db.executemany(update_sql,uidLs)
-            if len(countLT0) > 0:
-                #异常用户更新标记为2
-                update_sql = 'update scra_flags_0 set frelation_flag = 2 where uid = %s'
-                self.__db.executemany(update_sql,countLT0)
+                    for uid in updateUserLs:
+                        maxPage = self.get_max_page(uid)
+                        if maxPage > 0:
+    #                         print self.__url%(uid,maxPage)#1020增补最后一页
+    #                         self.__redisDb.rpush('frelation:start_urls', self.__url%(uid,maxPage))#1020增补最后一页
+                            for i in range(1,maxPage+1):#range的最大页数从1到maxPage
+                                self.__redisDb.rpush('frelation:start_urls', self.__url%(uid,i))
+                        elif maxPage == -2:#处理页码出现异常，则从uidLs中删除此uid，此种用户不更新爬取标记
+                            uidLs.remove(uid)
+                            logger.error('uid::::::%s do nothing because maxPage < 0 (maxPage=-2)'%uid)
+                        else:#没有取得最大页码，则从uidLs中删除此uid
+                            uidLs.remove(uid)
+                            countLT0.append(str(uid))
+                            logger.warn('uid::::::%s is added in countLT0 because maxPage < 0 (maxPage=-1)'%uid)
+                        
+            except Exception as e:
+                logger.error('Exception in function::: fill_url_to_redis uidLs:::%s-------------------->%s'%(','.join(uidLs),str(e)))
+            else:
+                if len(uidLs)>0:
+                    #正常用户，更新mysql数据库的flag
+                    update_sql = 'update scra_flags_0 set frelation_flag = 1 where uid = %s'
+                    self.__db.executemany(update_sql,uidLs)
+                if len(countLT0) > 0:
+                    #异常用户更新标记为2
+                    update_sql = 'update scra_flags_0 set frelation_flag = 2 where uid = %s'
+                    self.__db.executemany(update_sql,countLT0)
+        
 
     #获得当前redis数据库中相应的队列中url数量
     def get_redis_url_count(self,name):
@@ -140,10 +148,14 @@ class mysql2Redis():
 
 if __name__ == '__main__':
 #     print '------running------'
-    a = mysql2Redis()
-    while 1:
-        a.fill_url_to_redis()
-        time.sleep(8)
-        
+    if len(sys.argv)==2:
+        if int(sys.argv[1])>=0 and int(sys.argv[1])<=10:
+            a = mysql2Redis()
+            while 1:
+                a.fill_url_to_redis()
+                time.sleep(int(sys.argv[1]))
+    else:
+        print 'use  "python '+sys.argv[0]+' [second]" to start!'
 #     print '--------end-----------'
-
+#     a = mysql2Redis()
+#     print a.get_redis_url_count("frealtion:start_urls") <10000

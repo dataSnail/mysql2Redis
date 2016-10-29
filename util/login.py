@@ -24,10 +24,10 @@ import random
 from PIL import Image
 import cookielib
 import urllib2
-try:
-    from urllib.parse import quote_plus
-except:
-    from urllib import quote_plus
+# try:
+#     from urllib.parse import quote_plus
+# except:
+from urllib import quote_plus
 
 '''
 3.4

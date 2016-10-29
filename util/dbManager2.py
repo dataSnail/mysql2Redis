@@ -5,11 +5,12 @@ Created on 2016年10月3日
 @author: MQ
 '''
 import MySQLdb
+from util import r2mConfig
 # from util.snailLog  import snailLogger
 # # logger = snailLogger('dbManager2.log').get_logger()
 
 class dbManager2():
-    def __init__(self,dbname,host='223.3.75.180',user='root',passwd='root@123',port=3306,charset='utf8'):
+    def __init__(self,dbname,host=r2mConfig.MYSQL_SERVER_IP,user= r2mConfig.MYSQL_USERNAME,passwd=r2mConfig.MYSQL_PWD,port=3306,charset='utf8'):
         self.__host = host
         self.__user = user
         self.__passwd = passwd
