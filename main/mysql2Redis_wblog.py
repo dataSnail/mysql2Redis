@@ -13,39 +13,32 @@ import urllib2
 import json
 import time
 import redis
+from util import r2mConfig
 
 logger = snailLogger('mysql2Redis_wblog.log').get_logger()#/usr/local/src/
 
 class M2RWblog(object):
 
     def __init__(self):
-        self.__proxyHost = 'proxy.abuyun.com'
-        self.__proxyPort = '9010'
-        # 代理隧道验证信息
-        self.__proxyUser = "H5S031HK5GAI638P"
-        self.__proxyPass = "0451B74483012582"
-
         self.__proxyMeta = "http://%(user)s:%(pass)s@%(host)s:%(port)s" % {
-            "host": self.__proxyHost,
-            "port": self.__proxyPort,
-            "user": self.__proxyUser,
-            "pass": self.__proxyPass,
+            "host": r2mConfig.ABU_PROXY_HOST,
+            "port": r2mConfig.ABU_PROXY_PORT,
+            "user": r2mConfig.ABU_PROXY_USER,
+            "pass": r2mConfig.ABU_PROXY_PWD,
         }
         # 选择使用代理
-        self.__enable_proxy = False
+        self.__enable_proxy = r2mConfig.WBLOG_PROXY
         # 用户微博第一页
-        self.__url = 'http://m.weibo.cn/page/json?containerid=100505%s_-_WEIBO_SECOND_PROFILE_WEIBO&itemid=&page=%s'
+        self.__url = r2mConfig.WBLOG_URL
         # mysql连接
-        self.__db = dbManager2(dbname='sina')
+        self.__db = dbManager2(dbname=r2mConfig.WBLOG_DB_NAME)
         # redis连接
         self.__redisDb = redis.Redis(
-            host='223.3.94.145', port=6379, db=0, password='redis123')
-        # self.__redisDb = redis.Redis(
-        #     host='127.0.0.1', port=6379, db=0)
+            host=r2mConfig.REDIS_SERVER_IP, port=r2mConfig.REDIS_PORT, db=0, password=r2mConfig.REDIS_PASSWD)
         # redis中url队列的名称
-        self.__redisUrlName = 'wblog:start_urls'
+        self.__redisUrlName = r2mConfig.WBLOG_RUN
         # 从哪个表中读取数据
-        self.__table = 'scra_flags_0'
+        self.__table = r2mConfig.WBLOG_TABLE_FROM
 
     # 从mysql获取uid列表
     def get_uidLs_from_mysql(self):
@@ -139,4 +132,5 @@ if __name__ == '__main__':
     while True:
         if m2r.get_redis_url_count() < 1000:
             m2r.push_url_to_redis()
-        time.sleep(8)
+        else:
+            time.sleep(9)
