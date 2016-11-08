@@ -16,39 +16,32 @@ import urllib2
 import json
 import time
 import redis
+from util import r2mConfig
 
 logger = snailLogger('mysql2Redis_comment.log').get_logger()#/usr/local/src/
 
 class M2RComment(object):
 
     def __init__(self):
-        self.__proxyHost = 'proxy.abuyun.com'
-        self.__proxyPort = '9010'
-        # 代理隧道验证信息
-        self.__proxyUser = "H5S031HK5GAI638P"
-        self.__proxyPass = "0451B74483012582"
-
         self.__proxyMeta = "http://%(user)s:%(pass)s@%(host)s:%(port)s" % {
-            "host": self.__proxyHost,
-            "port": self.__proxyPort,
-            "user": self.__proxyUser,
-            "pass": self.__proxyPass,
+            "host": r2mConfig.ABU_PROXY_HOST,
+            "port": r2mConfig.ABU_PROXY_PORT,
+            "user": r2mConfig.ABU_PROXY_USER,
+            "pass": r2mConfig.ABU_PROXY_PWD,
         }
         # 选择使用代理
-        self.__enable_proxy = False
+        self.__enable_proxy = r2mConfig.COMMENT_PROXY
         # 微博评论第一页
-        self.__url = 'http://m.weibo.cn/single/rcList?format=cards&id=%s&type=comment&page=%s'
+        self.__url = r2mConfig.COMMENT_URL
         # mysql连接
-        self.__db = dbManager2(dbname='sina')
+        self.__db = dbManager2(dbname=r2mConfig.COMMENT_DB_NAME)
         # redis连接
         self.__redisDb = redis.Redis(
-            host='223.3.94.145', port=6379, db=0, password='redis123')
-        # self.__redisDb = redis.Redis(
-        #     host='127.0.0.1', port=6379, db=0)
+            host=r2mConfig.REDIS_SERVER_IP, port=r2mConfig.REDIS_PORT, db=0, password=r2mConfig.REDIS_PASSWD)
         # redis中url队列的名称
-        self.__redisUrlName = 'comment:start_urls'
+        self.__redisUrlName = r2mConfig.COMMENT_RUN
         # 从哪个表中读取数据
-        self.__table = 'wblog_1'
+        self.__table = r2mConfig.COMMENT_TABLE_FROM
         # 记录404的次数，当达到10次时，就重新获取cookie
         self.cnt = 0
 
@@ -105,6 +98,9 @@ class M2RComment(object):
                 except Exception as e:
                     logger.error(
                         'Exception in function::: get_urls_based_on_midLs(json data error) mid=%s------------------->%s' % (mid, str(e)))
+                    execfile(os.path.abspath(os.pardir) + '/util/login.py')
+                    cookie = cookielib.MozillaCookieJar()
+                    cookie.load(os.path.abspath(os.pardir) + '\cookie.txt', ignore_discard=True, ignore_expires=True)
                     time.sleep(5)
                 # 获得mid的url最大页码
                 else:
@@ -150,4 +146,5 @@ if __name__ == '__main__':
     while True:
         if m2r.get_redis_url_count() < 1000:
             m2r.push_url_to_redis()
-        time.sleep(8)
+        else:
+            time.sleep(9)

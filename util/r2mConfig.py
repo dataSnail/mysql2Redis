@@ -41,5 +41,14 @@ WBLOG_PROXY = True
 #---------------------------------------#
 
 #----------------comment-------------------#
-COMMENT_DB_NAME = 'sina_comment'
+# 数据库
+COMMENT_DB_NAME = 'sina'
+# 从哪个表读出用户id
+COMMENT_TABLE_FROM = 'wblog_1'
+# 评论url
+COMMENT_URL = 'http://m.weibo.cn/single/rcList?format=cards&id=%s&type=comment&page=%s'
+# redis中url队列的名称
+COMMENT_RUN = 'comment:start_urls'
+# 是否使用代理
+COMMENT_PROXY = True
 #---------------------------------------#
