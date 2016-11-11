@@ -21,18 +21,13 @@ logger = snailLogger('mysql2Redis.log').get_logger()#/usr/local/src/
 
 class mysql2Redis():
 
+    __mark403 = False
     def __init__(self):
-        self.__proxyHost = 'proxy.abuyun.com'
-        self.__proxyPort = '9010'
-        # 代理隧道验证信息
-        self.__proxyUser = "H5S031HK5GAI638P"
-        self.__proxyPass = "0451B74483012582"
-
         self.__proxyMeta = "http://%(user)s:%(pass)s@%(host)s:%(port)s" % {
-              "host" : self.__proxyHost,
-              "port" : self.__proxyPort,
-              "user" : self.__proxyUser,
-              "pass" : self.__proxyPass,
+              "host" : r2mConfig.ABU_PROXY_HOST,
+              "port" : r2mConfig.ABU_PROXY_PORT,
+              "user" : r2mConfig.ABU_PROXY_USER,
+              "pass" : r2mConfig.ABU_PROXY_PWD,
             }
         #选择使用代理
         self.__enable_proxy = True
@@ -40,7 +35,7 @@ class mysql2Redis():
         #数据库连接不上，停止运行程序30min = 1800s
         try:
             self.__db = dbManager2(dbname='sina')
-            self.__redisDb = redis.Redis(host=r2mConfig.REDIS_SERVER_IP,port= 6379,db=0,password=r2mConfig.REDIS_PASSWD)
+            self.__redisDb = redis.Redis(host=r2mConfig.REDIS_SERVER_IP,port= r2mConfig.REDIS_PORT,db=0,password=r2mConfig.REDIS_PASSWD)
         except Exception as e:
             logger.error('Exception in __init__ e:::::%s  and sleep at :::%s-----1800s'%(str(e),time.strftime('%Y-%m-%d %H:%M:%S',time.localtime(time.time()))))
             time.sleep(1800)
@@ -60,6 +55,9 @@ class mysql2Redis():
         maxPage = -1
         maxPageUrl = self.__url%(uid,1)
         #构建request 方便加入内容
+        if self.__mark403:#上次请求有403错误，此次请求代理换ip
+            HEADER['Proxy-Switch-Ip'] = "yes"
+            self.__mark403 = False
         request = urllib2.Request(maxPageUrl,headers = HEADER)
         try:
             proxy_handler = urllib2.ProxyHandler({"http" : self.__proxyMeta,'https':self.__proxyMeta})
@@ -74,6 +72,8 @@ class mysql2Redis():
             maxPage = -2
             if e.code == 429:#请求过于频繁
                 time.sleep(2)
+            if e.code == 403:#ip被远程服务器拒绝，应该请求下次换ip，置__mark403 = True
+                self.__mark403 = True
         except urllib2.URLError as e:
             maxPage = -2
             logger.error('Exception in function::: get_max_page(url error) uid=%s-------------------->%s'%(uid,str(e)))
