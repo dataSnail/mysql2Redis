@@ -19,6 +19,8 @@ logger = snailLogger('mysql2Redis_wblog.log').get_logger()#/usr/local/src/
 
 class M2RWblog(object):
 
+    __mark403 = False
+
     def __init__(self):
         self.__proxyMeta = "http://%(user)s:%(pass)s@%(host)s:%(port)s" % {
             "host": r2mConfig.ABU_PROXY_HOST,
@@ -56,6 +58,9 @@ class M2RWblog(object):
         urls = []
         # 遍历每个用户，访问每个人的第一页
         for uid in self.get_uidLs_from_mysql():
+            if self.__mark403:#上次请求有403错误，此次请求代理换ip
+                HEADER['Proxy-Switch-Ip'] = "yes"
+                self.__mark403 = False
             maxPage = -1  # 最大页数初始化
             maxPageUrl = self.__url % (uid, 1)  # 第一页
             # 构建request 方便加入内容
@@ -69,10 +74,16 @@ class M2RWblog(object):
                 else:
                     openner = urllib2.build_opener(null_proxy_handler)
                 response = openner.open(request)  # ,timeout=5
+
             except urllib2.HTTPError as e:
                 logger.error(
                     'Exception in function::: get_urls_based_on_uidLs(error code) uid=%s-------------------->%s' % (uid, str(e.code)))
                 maxPage = -2
+                if e.code == 429:#请求过于频繁
+                    time.sleep(2)
+                if e.code == 403:#ip被远程服务器拒绝，应该请求下次换ip，置__mark403 = True
+                    self.__mark403 = True
+
             except urllib2.URLError as e:
                 logger.error(
                     'Exception in function::: get_urls_based_on_uidLs(url error) uid=%s-------------------->%s' % (uid, str(e)))
